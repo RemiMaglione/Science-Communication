@@ -26,6 +26,7 @@ library(gridBase)
 library(foreach)
 library(doParallel)
 library(tidyr)
+library(multcomp)
 ```
 
 
@@ -35,7 +36,7 @@ library(tidyr)
 ## 2016
 ## INPUT DATA
 ```{r input 2016 Fig1, echo=F, eval=F}
-metadata2016<- read.csv(file = "./generalNew_Bcount.csv")
+metadata2016<- read.csv(file = "./metadata_2016.csv")
 
 metadata.courge2016 <- metadata2016[which(metadata2016$type=="Courge"),]
 metadata.courge2016$trt <- factor(metadata.courge2016$trt)
@@ -234,11 +235,11 @@ courgeAgro2016.noNA <- courgeAgro2016.noNA %>%
 
 courgeAgro2016.noNA$marketable <- 0
 courgeAgro2016.noNA <- courgeAgro2016.noNA %>%
-  mutate(marketable=replace(marketable, rowSums(.[11:14])>0, 1))
+  mutate(marketable=replace(marketable, rowSums(.[12:15])>0, 1))
 
 courgeAgro2016.noNA$pseudo <- 0
 courgeAgro2016.noNA <- courgeAgro2016.noNA %>%
-  mutate(pseudo=replace(pseudo, rowSums(.[c(7:11)])>0, 1))
+  mutate(pseudo=replace(pseudo, rowSums(.[c(7:11)])>4, 1))
 
 courgeSaine2016.avg <- courgeAgro2016.noNA %>%
   group_by(X.Par, Traitement) %>%
@@ -265,7 +266,7 @@ courgeAgro2016.noNA.trt <- courgeAgro2016.noNA %>%
   count(Traitement)
 ```
 
-### Proportion of squash fruit without P. syringae symptoms (%)
+### Proportion of squash fruit without P. syringae symptoms (%) : mean and sd
 ```{r}
 courgeAgro2016.noNA.trt <- courgeAgro2016.noNA %>%
   group_by(Rep1, Traitement) %>%
@@ -287,7 +288,19 @@ courgeAgro2016.noNA.pseudo.sub %>%
   summarise(avg=round(mean(prop)*100,digits=3), sd=round(sd(prop)*100,digits=3))
 ```
 
-### Proportion of marketable squash fruit with no damages (%)
+### squash fruit without P. syringae symptoms : generalized mixed model
+```{r}
+pseudo2016.glmer <- glmer(pseudo ~ Traitement + (1|Rep1), data = courgeAgro2016.noNA, family = "binomial")
+summary(glht(pseudo2016.glmer, mcp(Traitement="Tukey")))
+```
+|   trt   |signif group(pseudo)|
+| ------- |:------------------:|
+| Plastic |         ab         | 
+| Rye     |         a          |
+| Rye+Gly |         ab         |
+| Soil    |          b         |
+
+### Proportion of marketable squash fruit with no damages (%) : mean and sd
 ```{r}
 courgeAgro2016.noNA.marketable <- courgeAgro2016.noNA %>%
   group_by(Rep1, Traitement) %>%
@@ -303,6 +316,19 @@ courgeAgro2016.noNA.marketable.sub %>%
   group_by(Traitement) %>%
   summarise(avg=round(mean(prop)*100,digits=3), sd=round(sd(prop)*100,digits=3))
 ```
+
+### marketable squash fruit : generalized linear model 
+```{r}
+marketable.glm <- glm(marketable ~ relevel(Traitement, ref = "Soil"), data = courgeAgro2016.noNA, family = "binomial")
+TukeyHSD(aov(marketable.glm))
+```
+
+|   trt   |signif group(market)|
+| ------- |:------------------:|
+| Plastic |         a          | 
+| Rye     |          b         |
+| Rye+Gly |         ab         |
+| Soil    |         a          |
 
 ### 2017 section
 #### INPUT DATA
@@ -327,11 +353,11 @@ courgeAgro2017.noNA <- courgeAgro2017.noNA %>%
 
 courgeAgro2017.noNA$marketable <- 0
 courgeAgro2017.noNA <- courgeAgro2017.noNA %>%
-  mutate(marketable=replace(marketable, rowSums(.[11:14])>0, 1))
+  mutate(marketable=replace(marketable, rowSums(.[12:15])>0, 1))
 
 courgeAgro2017.noNA$pseudo <- 0
 courgeAgro2017.noNA <- courgeAgro2017.noNA %>%
-  mutate(pseudo=replace(pseudo, rowSums(.[c(7:11)])>0, 1))
+  mutate(pseudo=replace(pseudo, rowSums(.[c(7:11)])>4, 1))
 
 courgeSaine2017.avg <- courgeAgro2017.noNA %>%
   group_by(X.Par, Traitement) %>%
@@ -354,7 +380,7 @@ courgeSaine2017.avg <- courgeAgro2017.noNA %>%
   summarise(marketable.avg = mean(marketable))
 ```
 
-### Proportion of squash fruit without P. syringae symptoms (%)
+### Proportion of squash fruit without P. syringae symptoms (%) : meand and sd
 ```{r 2017 symptoms}
 courgeAgro2017.noNA.trt <- courgeAgro2017.noNA %>%
   group_by(Rep1, Traitement) %>%
@@ -376,7 +402,20 @@ courgeAgro2017.noNA.pseudo.sub %>%
   summarise(avg=round(mean(prop)*100,digits=3), sd=round(sd(prop)*100,digits=3))
 ```
 
-### Proportion of marketable squash fruit with no damages (%)
+### squash fruit without P. syringae symptoms : generalized mixed model 
+```{r}
+pseudo2017.glmer <- glmer(pseudo ~ Traitement + (1|Rep1), data = courgeAgro2017.noNA, family = "binomial")
+summary(glht(pseudo2017.glmer, mcp(Traitement="Tukey")))
+```
+|   trt   |signif group (date1)|
+| ------- |:------------------:|
+| Plastic |         ab         | 
+| Rye     |         ab         |
+| Rye+Gly |         a          |
+| Soil    |          b         |
+
+
+### Proportion of marketable squash fruit with no damages (%)  : meand and sd
 ```{r 2017 market}
 courgeAgro2017.noNA.trt <- courgeAgro2017.noNA %>%
   group_by(Rep1, Traitement) %>%
@@ -397,6 +436,19 @@ courgeAgro2017.noNA.marketable.sub %>%
   group_by(Traitement) %>%
   summarise(avg=round(mean(prop)*100,digits=3), sd=round(sd(prop)*100,digits=3))
 ```
+
+### Proportion of marketable squash fruit with no damages (%) : generalized mixed model 
+```{r}
+marketable2017.glmer <- glmer(marketable ~ Traitement + (1|Rep1), data = courgeAgro2017.noNA, family = "binomial")
+summary(glht(marketable2017.glmer, mcp(Traitement="Tukey")))
+```
+|   trt   |signif group (date1)|
+| ------- |:------------------:|
+| Plastic |         b          | 
+| Rye     |        a           |
+| Rye+Gly |        ab          |
+| Soil    |         b          |
+
 
 ##Supplemental Table 1. Number of P. syringae colony forming units (CFUs) recovered from squash leaves grown in different cover cropping practices#
 ### 2016 section
@@ -551,7 +603,7 @@ d3.NS2017.mean <- round(with(metadata2017.d3[metadata2017.d3$trt=="Sol_nu",], me
 ##INPUT & PROCESSING COMMUNITY DATA
 ###2016
 ```{r comm taxo metadata 2016}
-asvs2016.comm <- readRDS(file="./seqtabCollapse.220_200_2016_allRun_pPool_minOver_294_nochim.rds")
+asvs2016.comm <- readRDS(file="./m1_cut/seqtabCollapse.220_200_2016_allRun_pPool_minOver_294_nochim.rds")
 asvs2016.taxo <- readRDS(file="./taxa.2016.sp_220_200_allRun.rds")
 metadata2016 <- read.table(file = "./metadata_2016.csv", sep = ",", header = T)
 ```
