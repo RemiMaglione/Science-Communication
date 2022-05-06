@@ -426,3 +426,37 @@ mockAllYear.metaTree.rye.ggdf.gg <- ggplot(mockAllYear.metaTree.rye.ggdf, aes(x=
 
 multiplot(mockAllYear.metaTree.rye.ggdf.gg, mockAllYear.metaTree.squ.ggdf.gg, cols = 1) 
 ```
+
+#Supplemental Figure 5
+```{r}
+g0 <- ggplot(df1, aes(y=P.s.courge.Per, x=xdate))+  geom_boxplot(aes(fill=xdate, colour=col)) + scale_fill_identity() +
+  #scale_fill_manual(values = cbbPalette,name="Day after pathogen inoculation", labels=c("1d", "2d", "3d", "4d", "7d")) + 
+  theme_bw() + 
+  #scale_color_manual(values="grey70") + 
+  facet_grid(.~id) + ylim(c(0,1)) + ylab("% pathogen inhibition") +  theme(legend.position="bottom") 
+
+g.leg <-g_legend(g0)
+grid.draw(g.leg)
+
+g1<-ggplot(df3, aes(y=P.s.courge.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
+  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) + 
+  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id) + ylab("Pathogen inhibition (%)") + xlab("Day after\nPathogen\ninoculation") +#theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + 
+  guides(fill=FALSE) + ggtitle(expression(paste("A.\nPathogen = ",italic("P. syringae"), " ; Host = ", italic("C. pepo")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+
+g2<-ggplot(df3, aes(y=X.h.laitue.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
+  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) +
+  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id) + ylab("Pathogen inhibition (%)") +   xlab("Day after\nPathogen\ninoculation") +#theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())+
+  guides(fill=FALSE)  + ggtitle(expression(paste("C.\nPathogen = ",italic("X. hortorum"), " ; Host = ", italic("L. sativa")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+
+g3<-ggplot(df3, aes(y=X.c.chou.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
+  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) +
+  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id)  + ylab("Pathogen inhibition (%)") + xlab("Day after\nPathogen\ninoculation") + #theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
+  guides(fill=FALSE) + ggtitle(expression(paste("B.\nPathogen = ",italic("X. campestris"), " ; Host = ", italic("B. oleracea")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+
+g4<-ggplot(df3, aes(y=P.s.haricot.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
+  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) + 
+  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id) + ylab("Pathogen inhibition (%)") +  xlab("Day after\nPathogen\ninoculation") + #theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + 
+  guides(fill=FALSE)  +  ggtitle(expression(paste("D.\nPathogen = ",italic("X. syringae"), " ; Host = ", italic("P. vulgaris")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm"))  +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+
+multiplot(g1, g2, g3, g4, cols = 2)
+```
