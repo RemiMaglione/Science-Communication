@@ -229,3 +229,200 @@ mock.2016.topASV.sesmpd
 ```{r}
 mock.2016.topASV.sesmntd
 ```
+
+## 2017
+```{r}
+mock.2017.tax <- read.table(file = "./mock2017.taxo", header = T)
+mock2017.meta <- read.csv(file = "./mock2017.meta.csv", header = T)
+rownames(mock2017.meta)<-mock2017.meta$id
+rownames(mock.2017.tax) <-mock.2017.tax$sample
+
+mock2017.meta <- mock2017.meta[which(!mock2017.meta$material%in%c("Rainwater", "Air")),]
+
+both <- intersect(rownames(mock2017.meta), rownames(mock.2017.tax))
+
+mock.2017.tax <- mock.2017.tax[both,]
+
+mock.2017.tax.seq <- mock.2017.tax$seq
+
+names(mock.2017.tax.seq) <- mock.2017.tax$sample
+seqList2fasta(mock.2017.tax.seq, file="./2017/mock.2017.fasta", write2file=TRUE, repName=FALSE, seqName = TRUE) #write seq asv as fasta
+#################pynast#################
+#align_seqs.py -i mock.2017.fasta
+###############fastTree 2###############
+#cd pynast_aligned/
+#FastTree -nt mock.2017_aligned.fasta > mock.2017_aligned.tree
+########################################
+mock.2017.tree <- read.tree(file = "./2017/pynast_aligned/mock.2017_aligned.tree") #import tree
+```
+
+
+```{r}
+both2 <- intersect(rownames(mock2017.meta), mock.2017.tree$tip.label)
+mock2017.metaTree <- mock2017.meta[both2,]
+
+mock2017.merge <- merge(mock2017.metaTree, mock.2017.tax, by = 0)
+mock2017.metaTree <- data.frame(mock2017.merge[,-1], row.names = mock2017.merge$id)
+```
+
+### Plot tree
+```{r}
+colDate <- c("Early"='black', "Mid"='seagreen3', "Late"='skyblue2', "Pre"='red',
+             "Rye"='#D55E00', "Squash"='#999999')
+             #"Rainwater"='darkorange', "Air"='slateblue1')
+
+mock2017.metaTree$date <- as.character(mock2017.metaTree$date)
+mock2017.metaTree[which(mock2017.metaTree[,"date"]=="Date 0"),"date"] <- c("Pre")
+mock2017.metaTree[which(mock2017.metaTree[,"date"]=="Date 1"),"date"] <- c("Early")
+mock2017.metaTree[which(mock2017.metaTree[,"date"]=="Date 2"),"date"] <- c("Mid")
+mock2017.metaTree[which(mock2017.metaTree[,"date"]=="Date 3"),"date"] <- c("Late")
+
+mock.2017.ggtree <- ggtree(mock.2017.tree,  layout='fan', branch.length="none", open.angle=90) %<+% mock2017.metaTree + geom_tippoint(aes(color=Class)) +
+ scale_color_manual(values=cbbPalette) 
+
+mock2017.metaTree.date <- data.frame(date=mock2017.metaTree$date, row.names = rownames(mock2017.metaTree))
+
+mock.2017.ggtree2 <- gheatmap(mock.2017.ggtree, mock2017.metaTree.date, offset = 1, color=NULL, 
+         colnames_position="top", 
+         colnames_angle=0, colnames_offset_y = 1, 
+         hjust=0, font.size=4, width = 0.05) +
+  scale_fill_manual(values=colDate)
+
+mock2017.metaTree.material <- data.frame(material=mock2017.metaTree$material, row.names = rownames(mock2017.metaTree))
+
+mock.2017.ggtree3 <- gheatmap(mock.2017.ggtree2, mock2017.metaTree.material, offset = 4, color=NULL, 
+         colnames_position="top", 
+         colnames_angle=0, colnames_offset_y = 1, 
+         hjust=0, font.size=4, width = 0.05) +
+  scale_fill_manual(values=colDate)
+
+mock.2017.ggtree3
+```
+
+```{r}
+metaTree2tdyLonger <- function(metaTree) {
+metaTree.df.tdy <- metaTree %>% group_by(Class, date) %>% summarise(test = n())
+metaTree.df.tdy.wd <- tidyr::pivot_wider(data = metaTree.df.tdy, names_from = Class, values_from = test)
+metaTree.df.tdy.lg <- metaTree.df.tdy.wd %>% tidyr::pivot_longer(!date, names_to = "class", values_to = "count")
+metaTree.df.tdy.lg[is.na(metaTree.df.tdy.lg)] <- 0
+return(metaTree.df.tdy.lg)}
+
+mock2017.metaTree.rye.tlg <- metaTree2tdyLonger(mock2017.metaTree.rye)
+mock2017.metaTree.squ.tlg <- metaTree2tdyLonger(mock2017.metaTree.squ)
+```
+
+#Chi-Square test
+##on class count for all sampling date
+###2016
+```{r}
+mock2016.metaTree
+mock2016.metaTree.df <-  metaTree2df(mock2016.metaTree)
+chisq.test(apply(mock2016.metaTree.df, 2, sum))
+```
+
+###2017
+```{r}
+mock2017.metaTree.df <-  metaTree2df(mock2017.metaTree)
+chisq.test(apply(mock2017.metaTree.df, 2, sum))
+```
+
+```{r}
+mock2016.metaTree.rye <- mock2016.metaTree[which(mock2016.metaTree$material=="Rye"),]
+mock2016.metaTree.squ <- mock2016.metaTree[which(mock2016.metaTree$material=="Squash"),]
+
+mock2016.metaTree.rye.df <-metaTree2df(mock2016.metaTree.rye)
+mock2016.metaTree.squ.df <-metaTree2df(mock2016.metaTree.squ)
+mock2016.metaTree.rye.df <- mock2016.metaTree.rye.df[c("Pre", "Early", "Mid", "Late"),]
+mock2016.metaTree.squ.df <- mock2016.metaTree.squ.df[c("Early", "Mid", "Late"),]
+```
+
+
+```{r}
+mock2017.metaTree.rye <- mock2017.metaTree[which(mock2017.metaTree$material=="Rye"),]
+mock2017.metaTree.squ <- mock2017.metaTree[which(mock2017.metaTree$material=="Squash"),]
+
+mock2017.metaTree.rye.df <-metaTree2df(mock2017.metaTree.rye)
+mock2017.metaTree.squ.df <-metaTree2df(mock2017.metaTree.squ)
+mock2017.metaTree.rye.df <- mock2017.metaTree.rye.df[c("Pre", "Early", "Mid", "Late"),]
+mock2017.metaTree.squ.df <- mock2017.metaTree.squ.df[c("Early", "Mid", "Late"),]
+```
+
+##Gammaproteobacteria count between sampling date
+###Rye:2016&2017
+```{r}
+chisq.test(mock2017.metaTree.rye.df[,"Gammaproteobacteria"]+mock2016.metaTree.rye.df[,"Gammaproteobacteria"])
+#chisq.test(mockAllYear.metaTree.rye.df.rel.final[,"Gammaproteobacteria"])
+```
+
+###Squash:2016&2017
+```{r}
+chisq.test(mock2017.metaTree.squ.df[,"Gammaproteobacteria"]+mock2016.metaTree.squ.df[,"Gammaproteobacteria"])
+#chisq.test(mockAllYear.metaTree.squ.df.rel.final[,"Gammaproteobacteria"])
+```
+
+##Actinobacteria count between sampling date
+###Rye:2016&2017
+```{r}
+chisq.test(mock2016.metaTree.rye.df[,"Actinobacteria"]+mock2017.metaTree.rye.df[,"Actinobacteria"])
+```
+###Squash: 2016&2017
+```{r}
+chisq.test(mock2016.metaTree.squ.df[,"Actinobacteria"]+mock2017.metaTree.squ.df[,"Actinobacteria"])
+```
+
+##Alphaproteobacteria count between sampling date
+###Rye:2016&2017
+```{r}
+chisq.test(mock2016.metaTree.rye.df[,"Alphaproteobacteria"]+mock2017.metaTree.rye.df[,"Alphaproteobacteria"])
+```
+
+###Squash: 2016&2017
+```{r}
+chisq.test(mock2016.metaTree.squ.df[,"Alphaproteobacteria"]+mock2017.metaTree.squ.df[,"Alphaproteobacteria"])
+```
+
+```{r}
+MyPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#000000")
+MyPalette2 <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#C0C0C0", "#0072B2")
+
+mockAllYear.metaTree.squ.df <- bind_rows(mock2016.metaTree.squ.df %>% add_rownames("Season_Sampling"), 
+          mock2017.metaTree.squ.df %>% add_rownames("Season_Sampling")) %>% 
+    group_by(Season_Sampling)  %>% 
+    replace(is.na(.), 0) %>%
+    summarise_all(sum)
+
+mockAllYear.metaTree.squ.df <- as.data.frame(mockAllYear.metaTree.squ.df)
+rownames(mockAllYear.metaTree.squ.df) <- mockAllYear.metaTree.squ.df$Season_Sampling
+mockAllYear.metaTree.squ.df <- mockAllYear.metaTree.squ.df[c("Early", "Mid", "Late"),]
+
+mockAllYear.metaTree.rye.df <- bind_rows(mock2016.metaTree.rye.df %>% add_rownames("Season_Sampling"), 
+          mock2017.metaTree.rye.df %>% add_rownames("Season_Sampling")) %>% 
+    group_by(Season_Sampling)  %>% 
+    replace(is.na(.), 0) %>% 
+    summarise_all(sum)
+
+mockAllYear.metaTree.rye.df <- as.data.frame(mockAllYear.metaTree.rye.df)
+rownames(mockAllYear.metaTree.rye.df) <- mockAllYear.metaTree.rye.df$Season_Sampling
+mockAllYear.metaTree.rye.df <- mockAllYear.metaTree.rye.df[c("Pre", "Early", "Mid", "Late"),]
+
+
+mockAllYear.metaTree.squ.ggdf <- mockAllYear.metaTree.squ.df %>% tidyr::pivot_longer(!Season_Sampling, names_to = "class", values_to = "count") %>% mutate(material="Squash") %>%  group_by(Season_Sampling) %>% 
+  mutate(count_rel = count / sum(count) * 100)
+
+mockAllYear.metaTree.squ.df.rel <- mockAllYear.metaTree.squ.ggdf[,c("Season_Sampling","class", "count_rel")]
+mockAllYear.metaTree.squ.df.rel.final <- mockAllYear.metaTree.squ.df.rel %>% tidyr::pivot_wider(names_from = "class", values_from = "count_rel") %>% summarise_all(sum)
+
+mockAllYear.metaTree.rye.ggdf <- mockAllYear.metaTree.rye.df %>% tidyr::pivot_longer(!Season_Sampling, names_to = "class", values_to = "count") %>% mutate(material="Rye") %>%  group_by(Season_Sampling) %>% 
+  mutate(count_rel = count / sum(count) * 100)
+
+mockAllYear.metaTree.rye.df.rel <- mockAllYear.metaTree.rye.ggdf[,c("Season_Sampling","class", "count_rel")]
+mockAllYear.metaTree.rye.df.rel.final <- mockAllYear.metaTree.rye.df.rel %>% tidyr::pivot_wider(names_from = "class", values_from = "count_rel") %>% summarise_all(sum)
+
+mockAllYear.metaTree.squ.ggdf.gg<- ggplot(mockAllYear.metaTree.squ.ggdf, aes(x=Season_Sampling, y=count_rel, fill=class)) + geom_bar(stat = "identity") + ggtitle("Squash") +
+ scale_fill_manual(values=MyPalette2) + ylab("Relative class abundance (%)") + xlab("Sampling Season") + theme_light() + scale_x_discrete(limits=c( "Early", "Mid", "Late"))  + labs(fill='Taxonomic class')
+
+mockAllYear.metaTree.rye.ggdf.gg <- ggplot(mockAllYear.metaTree.rye.ggdf, aes(x=Season_Sampling, y=count_rel, fill=class)) + geom_bar(stat = "identity") + ggtitle("Rye") +
+ scale_fill_manual(values=MyPalette) + ylab("Relative class abundance (%)") + xlab("Sampling Season") + theme_light() + scale_x_discrete(limits=c("Pre", "Early", "Mid", "Late")) + labs(fill='Taxonomic class')
+
+multiplot(mockAllYear.metaTree.rye.ggdf.gg, mockAllYear.metaTree.squ.ggdf.gg, cols = 1) 
+```
