@@ -3,20 +3,22 @@ title: "2022_1"
 output: html_notebook
 ---
 
-###load library
-```{r}
+# load library
+```{r lib}
 library(ggtree)
 library(ggplot2)
 library(tidyr)
 library(dplyr)
 library(vegan)
-library(dplyr)
 library(picante)
 library(gplots)
 library(RColorBrewer)
+library(lme4)
+library(emmeans)
+library(grid)
 ```
 
-###loading Function
+# loading Function
 ```{r makeTransparent}
 makeTransparent <- function(..., alpha=0.5) {
   
@@ -37,7 +39,6 @@ makeTransparent <- function(..., alpha=0.5) {
 ```
 
 
-###import function
 ### https://github.com/RemiMaglione/r-scripts/blob/master/scripts4Dada2/mostAbundASV.R
 ```{r mostAbundASV}
 mostAbundASV <- function(otu_comm, topASV = 1, ASVseqColName = "MostAbundASVseq") { 
@@ -106,8 +107,8 @@ metaTree2df <- function(metaTree) {
 ```
 
 
-#Main
-## input
+# 2016
+## input data
 ```{r}
 mock.2016.tax <- readRDS(file="./taxa.2016.sp_220_200_mock.rds")
 mock.2016.com <- readRDS(file="./seqtabCollapse.220_200_2016_mock_pPool_minOver_250_nochim.rds")
@@ -135,7 +136,7 @@ rownames(Mock_2016.taxo) <- taxonames
 ```
 
 
-##Build phylogenetic tree
+## Build phylogenetic tree
 ```{r}
 mock.2016.com.mA_ASV <-mostAbundASV(mock.2016.com, 1) # extract most abundant ASV
 mock.2016.com.mA_ASV.seq <- mock.2016.com.mA_ASV$MostAbundASVseq
@@ -150,7 +151,7 @@ seqList2fasta(mock.2016.com.mA_ASV.seq, file="mock.2016.topASV.fasta", write2fil
 mock.2016.topASV.tree <- read.tree(file = "./pynast_aligned/mock.2016.topASV_aligned.tree") #import tree
 ```
 
-##Tree metadata
+## Tree metadata
 ```{r}
 mock.2016.com.cla <- taxocomm(mock.2016.com, Mock_2016.taxo, "Class") #Class
 mock.2016.com.cla.mostAbund <- mostAbundTaxa(mock.2016.com.cla, 1) #Class
@@ -162,6 +163,7 @@ mock2016.metaTree$Class <- mock.2016.com.cla.mostAbund[both,"MostAbundTaxa"]
 ```
 
 ## Plot tree
+### Figure 2
 ```{r}
 colDate <- c("Early"='black', "Mid"='seagreen3', "Late"='skyblue2', "Pre"='red',
              "Rye"='#D55E00', "Squash"='#999999')
@@ -169,7 +171,8 @@ colDate <- c("Early"='black', "Mid"='seagreen3', "Late"='skyblue2', "Pre"='red',
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
 
 mock.2016.topASV.ggtree <- ggtree(mock.2016.topASV.tree, layout='fan',branch.length="none", open.angle=90) %<+% mock2016.metaTree + geom_tippoint(aes(color=Class)) +
- scale_color_manual(values=cbbPalette) 
+ scale_color_manual(values=cbbPalette) + ggtitle("2016") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 mock2016.metaTree$date <- as.character(mock2016.metaTree$date)
 mock2016.metaTree[which(mock2016.metaTree[,"date"]=="Date 0"),"date"] <- c("Pre")
@@ -197,7 +200,7 @@ mock.2016.topASV.ggtree3
 ```
 
 
-### phylo analysis
+## phylo analysis
 ```{r}
 mock2016.metaTree.gp <- mock2016.metaTree %>% group_by(Class, date) %>% summarise(test = n())
 mock2016.metaTree.gp.df <- as.data.frame(tidyr::pivot_wider(data = mock2016.metaTree.gp, names_from = Class, values_from = test))
@@ -208,6 +211,7 @@ mock2016.metaTree.gp.df[is.na(mock2016.metaTree.gp.df)] <- 0
 mock2016.metaTree.gp.df
 ```
 
+## Standardized effect size of mean pairwise or mean nearest taxon distances in communities
 ```{r}
 mock2016.metaTree.idda <- data.frame(id=mock2016.metaTree$id, date=mock2016.metaTree$date)
 mock2016.metaTree.idda$test <- c(1)
@@ -222,15 +226,17 @@ mock.2016.topASV.sesmpd <- ses.mpd(mock2016.metaTree.idda.df, mock.2016.topASV.t
 mock.2016.topASV.sesmntd <- ses.mntd(mock2016.metaTree.idda.df, mock.2016.topASV.tree.dist, null.model = "richness", abundance.weighted = FALSE, runs = 999)
 ```
 
+## output results of mean pairwise distances
 ```{r}
 mock.2016.topASV.sesmpd
 ```
-
+##  output results of mean nearest taxon distances
 ```{r}
 mock.2016.topASV.sesmntd
 ```
 
-## 2017
+# 2017
+## Input data
 ```{r}
 mock.2017.tax <- read.table(file = "./mock2017.taxo", header = T)
 mock2017.meta <- read.csv(file = "./mock2017.meta.csv", header = T)
@@ -256,7 +262,6 @@ seqList2fasta(mock.2017.tax.seq, file="./2017/mock.2017.fasta", write2file=TRUE,
 mock.2017.tree <- read.tree(file = "./2017/pynast_aligned/mock.2017_aligned.tree") #import tree
 ```
 
-
 ```{r}
 both2 <- intersect(rownames(mock2017.meta), mock.2017.tree$tip.label)
 mock2017.metaTree <- mock2017.meta[both2,]
@@ -265,7 +270,35 @@ mock2017.merge <- merge(mock2017.metaTree, mock.2017.tax, by = 0)
 mock2017.metaTree <- data.frame(mock2017.merge[,-1], row.names = mock2017.merge$id)
 ```
 
-### Plot tree
+
+## Standardized effect size of mean pairwise or mean nearest taxon distances in communities
+```{r}
+mock2017.metaTree.idda <- data.frame(id=mock2017.metaTree$id, date=mock2017.metaTree$date)
+mock2017.metaTree.idda$test <- c(1)
+mock2017.metaTree.idda.df <- as.data.frame(tidyr::pivot_wider(data = mock2017.metaTree.idda, names_from = id, values_from = test))
+rownames(mock2017.metaTree.idda.df) <- mock2017.metaTree.idda.df$date
+mock2017.metaTree.idda.df <- mock2017.metaTree.idda.df[,-1]
+mock2017.metaTree.idda.df[is.na(mock2017.metaTree.idda.df)] <- 0
+
+mock2017.metaTree.dist <- cophenetic(mock.2017.tree)
+
+mock.2017.sesmpd <- ses.mpd(mock2017.metaTree.idda.df, mock2017.metaTree.dist, null.model = "richness", abundance.weighted = FALSE, runs = 999)
+mock.2017.sesmntd <- ses.mntd(mock2017.metaTree.idda.df, mock2017.metaTree.dist, null.model = "richness", abundance.weighted = FALSE, runs = 999)
+```
+
+## output results of mean pairwise distances
+```{r}
+mock.2017.sesmpd
+```
+
+
+##  output results of mean nearest taxon distances
+```{r}
+mock.2017.sesmntd
+```
+
+## Plot tree
+### Figure 2
 ```{r}
 colDate <- c("Early"='black', "Mid"='seagreen3', "Late"='skyblue2', "Pre"='red',
              "Rye"='#D55E00', "Squash"='#999999')
@@ -278,7 +311,8 @@ mock2017.metaTree[which(mock2017.metaTree[,"date"]=="Date 2"),"date"] <- c("Mid"
 mock2017.metaTree[which(mock2017.metaTree[,"date"]=="Date 3"),"date"] <- c("Late")
 
 mock.2017.ggtree <- ggtree(mock.2017.tree,  layout='fan', branch.length="none", open.angle=90) %<+% mock2017.metaTree + geom_tippoint(aes(color=Class)) +
- scale_color_manual(values=cbbPalette) 
+ scale_color_manual(values=cbbPalette) + ggtitle("2017") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 mock2017.metaTree.date <- data.frame(date=mock2017.metaTree$date, row.names = rownames(mock2017.metaTree))
 
@@ -299,33 +333,28 @@ mock.2017.ggtree3 <- gheatmap(mock.2017.ggtree2, mock2017.metaTree.material, off
 mock.2017.ggtree3
 ```
 
+## Figure 2 : final plot
 ```{r}
-metaTree2tdyLonger <- function(metaTree) {
-metaTree.df.tdy <- metaTree %>% group_by(Class, date) %>% summarise(test = n())
-metaTree.df.tdy.wd <- tidyr::pivot_wider(data = metaTree.df.tdy, names_from = Class, values_from = test)
-metaTree.df.tdy.lg <- metaTree.df.tdy.wd %>% tidyr::pivot_longer(!date, names_to = "class", values_to = "count")
-metaTree.df.tdy.lg[is.na(metaTree.df.tdy.lg)] <- 0
-return(metaTree.df.tdy.lg)}
-
-mock2017.metaTree.rye.tlg <- metaTree2tdyLonger(mock2017.metaTree.rye)
-mock2017.metaTree.squ.tlg <- metaTree2tdyLonger(mock2017.metaTree.squ)
+multiplot(mock.2016.topASV.ggtree3, mock.2017.ggtree3, cols = 2)
 ```
 
-#Chi-Square test
-##on class count for all sampling date
-###2016
+## Chi-Square test
+### on class count for all sampling date
+#### 2016
 ```{r}
 mock2016.metaTree
 mock2016.metaTree.df <-  metaTree2df(mock2016.metaTree)
 chisq.test(apply(mock2016.metaTree.df, 2, sum))
 ```
 
-###2017
+#### 2017
 ```{r}
 mock2017.metaTree.df <-  metaTree2df(mock2017.metaTree)
 chisq.test(apply(mock2017.metaTree.df, 2, sum))
 ```
 
+## Per sample type (squash leaves or rye material)
+### 2016
 ```{r}
 mock2016.metaTree.rye <- mock2016.metaTree[which(mock2016.metaTree$material=="Rye"),]
 mock2016.metaTree.squ <- mock2016.metaTree[which(mock2016.metaTree$material=="Squash"),]
@@ -336,7 +365,7 @@ mock2016.metaTree.rye.df <- mock2016.metaTree.rye.df[c("Pre", "Early", "Mid", "L
 mock2016.metaTree.squ.df <- mock2016.metaTree.squ.df[c("Early", "Mid", "Late"),]
 ```
 
-
+### 2017
 ```{r}
 mock2017.metaTree.rye <- mock2017.metaTree[which(mock2017.metaTree$material=="Rye"),]
 mock2017.metaTree.squ <- mock2017.metaTree[which(mock2017.metaTree$material=="Squash"),]
@@ -347,40 +376,42 @@ mock2017.metaTree.rye.df <- mock2017.metaTree.rye.df[c("Pre", "Early", "Mid", "L
 mock2017.metaTree.squ.df <- mock2017.metaTree.squ.df[c("Early", "Mid", "Late"),]
 ```
 
-##Gammaproteobacteria count between sampling date
-###Rye:2016&2017
+## Gammaproteobacteria count between sampling date
+### Rye:2016&2017
 ```{r}
 chisq.test(mock2017.metaTree.rye.df[,"Gammaproteobacteria"]+mock2016.metaTree.rye.df[,"Gammaproteobacteria"])
 #chisq.test(mockAllYear.metaTree.rye.df.rel.final[,"Gammaproteobacteria"])
 ```
 
-###Squash:2016&2017
+### Squash:2016&2017
 ```{r}
 chisq.test(mock2017.metaTree.squ.df[,"Gammaproteobacteria"]+mock2016.metaTree.squ.df[,"Gammaproteobacteria"])
 #chisq.test(mockAllYear.metaTree.squ.df.rel.final[,"Gammaproteobacteria"])
 ```
 
-##Actinobacteria count between sampling date
-###Rye:2016&2017
+## Actinobacteria count between sampling date
+### Rye:2016&2017
 ```{r}
 chisq.test(mock2016.metaTree.rye.df[,"Actinobacteria"]+mock2017.metaTree.rye.df[,"Actinobacteria"])
 ```
-###Squash: 2016&2017
+
+### Squash: 2016&2017
 ```{r}
 chisq.test(mock2016.metaTree.squ.df[,"Actinobacteria"]+mock2017.metaTree.squ.df[,"Actinobacteria"])
 ```
 
-##Alphaproteobacteria count between sampling date
-###Rye:2016&2017
+## Alphaproteobacteria count between sampling date
+### Rye:2016&2017
 ```{r}
 chisq.test(mock2016.metaTree.rye.df[,"Alphaproteobacteria"]+mock2017.metaTree.rye.df[,"Alphaproteobacteria"])
 ```
 
-###Squash: 2016&2017
+### Squash: 2016&2017
 ```{r}
 chisq.test(mock2016.metaTree.squ.df[,"Alphaproteobacteria"]+mock2017.metaTree.squ.df[,"Alphaproteobacteria"])
 ```
 
+# Figure 3
 ```{r}
 MyPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#000000")
 MyPalette2 <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#C0C0C0", "#0072B2")
@@ -427,36 +458,261 @@ mockAllYear.metaTree.rye.ggdf.gg <- ggplot(mockAllYear.metaTree.rye.ggdf, aes(x=
 multiplot(mockAllYear.metaTree.rye.ggdf.gg, mockAllYear.metaTree.squ.ggdf.gg, cols = 1) 
 ```
 
-#Supplemental Figure 5
+# Figure 4
+## Data input
 ```{r}
-g0 <- ggplot(df1, aes(y=P.s.courge.Per, x=xdate))+  geom_boxplot(aes(fill=xdate, colour=col)) + scale_fill_identity() +
-  #scale_fill_manual(values = cbbPalette,name="Day after pathogen inoculation", labels=c("1d", "2d", "3d", "4d", "7d")) + 
-  theme_bw() + 
-  #scale_color_manual(values="grey70") + 
-  facet_grid(.~id) + ylim(c(0,1)) + ylab("% pathogen inhibition") +  theme(legend.position="bottom") 
+comp19.dish <- read.csv(file = "./Inhibition de croissance des bactéries phytopathogènes Champion_2016_2017 (last).csv", sep = ",", header = T, na.strings = "NA")
+```
 
-g.leg <-g_legend(g0)
-grid.draw(g.leg)
+## Data processing
+```{r}
+cbbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+antago.list <- c("MC16-285","MP17-005", "MP17-115", "MP17-308")
+antago.df <- data.frame(id=antago.list, col=cbbPalette[1:4])
 
-g1<-ggplot(df3, aes(y=P.s.courge.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
-  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) + 
-  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id) + ylab("Pathogen inhibition (%)") + xlab("Day after\nPathogen\ninoculation") +#theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + 
-  guides(fill=FALSE) + ggtitle(expression(paste("A.\nPathogen = ",italic("P. syringae"), " ; Host = ", italic("C. pepo")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+for (i in 1:nrow(comp19.dish)){
+  ifelse(comp19.dish[i, "id"]%in%antago.df$id,
+         yes= comp19.dish[i, "col"] <- as.character(antago.df[which(antago.df$id==as.character(comp19.dish[i, "id"])), "col"]),
+         no= comp19.dish[i, "col"] <- "grey90")
+}
+df3 <- merge(comp19.dish, antago.df, by="id")
+```
 
-g2<-ggplot(df3, aes(y=X.h.laitue.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
-  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) +
-  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id) + ylab("Pathogen inhibition (%)") +   xlab("Day after\nPathogen\ninoculation") +#theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())+
-  guides(fill=FALSE)  + ggtitle(expression(paste("C.\nPathogen = ",italic("X. hortorum"), " ; Host = ", italic("L. sativa")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+## ANOVA
+```{r anova}
+MC16_285.aov <- anova(lm(P.s.courge.Per~xdate, data = df3[which(df3$id=="MC16-285"),]))
+MP17_005.aov <- anova(lm(P.s.courge.Per~xdate, data = df3[which(df3$id=="MP17-005"),]))
+MP17_115.aov <- anova(lm(P.s.courge.Per~date, data = df3[which(df3$id=="MP17-115"),]))
+MP17_308.aov <- anova(lm(P.s.courge.Per~xdate, data = df3[which(df3$id=="MP17-308"),]))
 
-g3<-ggplot(df3, aes(y=X.c.chou.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
-  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) +
-  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id)  + ylab("Pathogen inhibition (%)") + xlab("Day after\nPathogen\ninoculation") + #theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
-  guides(fill=FALSE) + ggtitle(expression(paste("B.\nPathogen = ",italic("X. campestris"), " ; Host = ", italic("B. oleracea")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm")) +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+#Manually export ANOVA results
+df3$aovPval <- NA
+df3[which(df3$id=="MC16-285"),"aovPval"] <- "p<0.0001"
+df3[which(df3$id=="MP17-005"),"aovPval"] <- "p=0.0136"
+df3[which(df3$id=="MP17-115"),"aovPval"] <- "p=0.9294"
+df3[which(df3$id=="MP17-308"),"aovPval"] <- "p<0.0001"
+```
 
-g4<-ggplot(df3, aes(y=P.s.haricot.Per*100, x=xdate))+  geom_boxplot(aes(fill=date)) + 
-  scale_fill_manual(values = cbbPalette,name="Day after\nPathogen\ninoculation", labels=c("1d", "2d", "3d", "4d", "7d")) + 
-  theme_bw() + scale_color_manual(values="grey70") + facet_grid(.~id) + ylab("Pathogen inhibition (%)") +  xlab("Day after\nPathogen\ninoculation") + #theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + 
-  guides(fill=FALSE)  +  ggtitle(expression(paste("D.\nPathogen = ",italic("X. syringae"), " ; Host = ", italic("P. vulgaris")))) + theme(plot.margin = unit(c(1, 0.5, 0.5, 0.5), "cm"))  +  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+## plot data and linear regression
+```{r}
+ggplot(df3, aes(x=xdate, y=P.s.courge.Per))+ 
+  #geom_line(data=df2, colour="grey90") +
+  geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
+  #geom_point(data=df3)
+  #scale_color_manual(values = cbbPalette)  + 
+  facet_grid(id~.) + theme_bw() + ylim(0,0.75) +
+  #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
+  xlab("Day count after P.syringae inoculation") + ylab("% antagonist inhibition") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate) + geom_text(mapping =aes(x=6.5, y=0.65, label=aovPval))
+```
 
-multiplot(g1, g2, g3, g4, cols = 2)
+
+## Figure 5
+```{r}
+y_title <- expression(paste(italic("P.syringae"), " symptoms count"))
+
+ggplot(data = test1.pseudo, aes(x=antagonist, y=pseudo_spot, fill=antagonist)) + geom_jitter(aes(color=antagonist), ) + geom_violin(alpha=0.3) +  stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean, geom = "crossbar", width = 0.5, col="red", linetype = 1, show.legend = FALSE) + theme_bw() + ylab(y_title) + 
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + scale_fill_discrete(name="Antagonist", breaks=c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"), labels=c("Water", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "Mix")) + scale_color_discrete(name="Antagonist", breaks=c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"), labels=c("Water", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "Mix")) 
+```
+
+
+# Figure 6
+## Data input and processing
+```{r}
+test1 <- read.table(file = "./test1.csv", sep = ",", header = T)
+test1.pseudo <- test1[which(test1[,"treatment"]=="B17-149"),]
+test1.pseudo$rep <- factor(test1.pseudo$rep)
+test1.pseudo$antagonist <- factor(test1.pseudo$antagonist)
+
+test1.pseudo$antagonist <- factor(test1.pseudo$antagonist, levels = c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"))
+
+test1.pseudo[test1.pseudo$antagonist=="EAU", "test"] <- c("neg")
+test1.pseudo[test1.pseudo$antagonist=="MIX", "test"] <- c("mix")
+test1.pseudo[!test1.pseudo$antagonist%in%c("EAU", "MIX"), "test"] <- c("antagonist")
+
+test1.pseudo.wd <- test1.pseudo %>% pivot_longer(cols = c("Feuille.A","Feuille.B","Feuille.C","Feuille.D"), names_to = "leaf", values_to = "pseudo_count" )
+
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.A", "Leaf"] <- "A"
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.B", "Leaf"] <- "B"
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.C", "Leaf"] <- "C"
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.D", "Leaf"] <- "D"
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.A", "Leafx"] <- "4"
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.B", "Leafx"] <- "3"
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.C", "Leafx"] <- "2"
+test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.D", "Leafx"] <- "1"
+
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="EAU"&test1.pseudo.wd$leaf=="Feuille.A","tukeyHSD_glmer"] <- "ab"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="EAU"&test1.pseudo.wd$leaf=="Feuille.B","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="EAU"&test1.pseudo.wd$leaf=="Feuille.C","tukeyHSD_glmer"] <- "bc"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="EAU"&test1.pseudo.wd$leaf=="Feuille.D","tukeyHSD_glmer"] <- "C"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MIX"&test1.pseudo.wd$leaf=="Feuille.A","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MIX"&test1.pseudo.wd$leaf=="Feuille.B","tukeyHSD_glmer"] <- "ab"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MIX"&test1.pseudo.wd$leaf=="Feuille.C","tukeyHSD_glmer"] <- "b"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MIX"&test1.pseudo.wd$leaf=="Feuille.D","tukeyHSD_glmer"] <- "c"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MC16-285"&test1.pseudo.wd$leaf=="Feuille.A","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MC16-285"&test1.pseudo.wd$leaf=="Feuille.B","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MC16-285"&test1.pseudo.wd$leaf=="Feuille.C","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MC16-285"&test1.pseudo.wd$leaf=="Feuille.D","tukeyHSD_glmer"] <- "b"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-005"&test1.pseudo.wd$leaf=="Feuille.A","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-005"&test1.pseudo.wd$leaf=="Feuille.B","tukeyHSD_glmer"] <- "ab"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-005"&test1.pseudo.wd$leaf=="Feuille.C","tukeyHSD_glmer"] <- "abc"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-005"&test1.pseudo.wd$leaf=="Feuille.D","tukeyHSD_glmer"] <- "c"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-115"&test1.pseudo.wd$leaf=="Feuille.A","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-115"&test1.pseudo.wd$leaf=="Feuille.B","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-115"&test1.pseudo.wd$leaf=="Feuille.C","tukeyHSD_glmer"] <- "b"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-115"&test1.pseudo.wd$leaf=="Feuille.D","tukeyHSD_glmer"] <- "b"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-308"&test1.pseudo.wd$leaf=="Feuille.A","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-308"&test1.pseudo.wd$leaf=="Feuille.B","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-308"&test1.pseudo.wd$leaf=="Feuille.C","tukeyHSD_glmer"] <- "a"
+test1.pseudo.wd[test1.pseudo.wd$antagonist=="MP17-308"&test1.pseudo.wd$leaf=="Feuille.D","tukeyHSD_glmer"] <- "a"
+
+test1.pseudo.wd$antagonist2 <- test1.pseudo.wd$antagonist
+test1.pseudo.wd$antagonist2 <- as.character(test1.pseudo.wd$antagonist)
+test1.pseudo.wd[test1.pseudo.wd$antagonist2=="EAU","antagonist2"] <- "Water"
+```
+
+## Normalization for figure 6.B
+```{r}
+test1.pseudo.wd.mean <-test1.pseudo.wd %>% group_by(antagonist, Leaf) %>% mutate(pseudo_count_mean = mean(pseudo_count))
+leafA.mean <- test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$antagonist2=="Water"&test1.pseudo.wd.mean$Leaf=="A"),"pseudo_count_mean"][[1]][1]
+leafB.mean <- test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$antagonist2=="Water"&test1.pseudo.wd.mean$Leaf=="B"),"pseudo_count_mean"][[1]][1]
+leafC.mean <- test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$antagonist2=="Water"&test1.pseudo.wd.mean$Leaf=="C"),"pseudo_count_mean"][[1]][1]
+leafD.mean <- test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$antagonist2=="Water"&test1.pseudo.wd.mean$Leaf=="D"),"pseudo_count_mean"][[1]][1]
+test1.pseudo.wd.mean$pseudo_count_normPlus <- NA
+test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="A"),"pseudo_count_normPlus"] <- (test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="A"),"pseudo_count"]+1)/(leafA.mean+1)
+test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="B"),"pseudo_count_normPlus"] <- (test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="B"),"pseudo_count"]+1)/(leafB.mean+1)
+test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="C"),"pseudo_count_normPlus"] <- (test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="C"),"pseudo_count"]+1)/(leafC.mean+1)
+test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="D"),"pseudo_count_normPlus"] <- (test1.pseudo.wd.mean[which(test1.pseudo.wd.mean$Leaf=="D"),"pseudo_count"]+1)/(leafD.mean+1)
+```
+
+## Linear mixed modeling
+```{r}
+pseudo_count_normPlus.lmer2 <- lmerTest::lmer(log2(pseudo_count_normPlus) ~ 0 + antagonist * leaf + (1|rep_row) + (1|rep_col) , data = test1.pseudo.wd.mean)
+pseudo_count_normPlus.lmer.emm <- emmeans(pseudo_count_normPlus.lmer2, list(pairwise ~ antagonist * leaf), adjust = "tukey")
+
+myList <- c("EAU Feuille.A - (MC16-285 Feuille.A)",
+"EAU Feuille.A - (MP17-005 Feuille.A)" ,
+"EAU Feuille.A - (MP17-115 Feuille.A)" ,
+"EAU Feuille.A - (MP17-308 Feuille.A)",
+"EAU Feuille.A - MIX Feuille.A",
+"EAU Feuille.B - (MC16-285 Feuille.B)",
+"EAU Feuille.B - (MP17-005 Feuille.B)" ,
+"EAU Feuille.B - (MP17-115 Feuille.B)" ,
+"EAU Feuille.B - (MP17-308 Feuille.B)",
+"EAU Feuille.B - MIX Feuille.B",
+"EAU Feuille.C - (MC16-285 Feuille.C)",
+"EAU Feuille.C - (MP17-005 Feuille.C)" ,
+"EAU Feuille.C - (MP17-115 Feuille.C)" ,
+"EAU Feuille.C - (MP17-308 Feuille.C)",
+"EAU Feuille.C - MIX Feuille.C",
+"EAU Feuille.D - (MC16-285 Feuille.D)",
+"EAU Feuille.D - (MP17-005 Feuille.D)" ,
+"EAU Feuille.D - (MP17-115 Feuille.D)" ,
+"EAU Feuille.D - (MP17-308 Feuille.D)",
+"EAU Feuille.D - MIX Feuille.D")
+
+pseudo_count_normPlus.lmer.emm$`pairwise differences of antagonist, leaf`[which(pseudo_count_normPlus.lmer.emm$`pairwise differences of antagonist, leaf`@levels$`1`%in%myList)]
+
+test1.pseudo.wd.mean$normPval <- NA
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MC16-285"&test1.pseudo.wd.mean$leaf=="Feuille.A","normPval"] <- "**"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MC16-285"&test1.pseudo.wd.mean$leaf=="Feuille.B","normPval"] <- "**"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MC16-285"&test1.pseudo.wd.mean$leaf=="Feuille.C","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MC16-285"&test1.pseudo.wd.mean$leaf=="Feuille.D","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-005"&test1.pseudo.wd.mean$leaf=="Feuille.A","normPval"] <- "***"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-005"&test1.pseudo.wd.mean$leaf=="Feuille.B","normPval"] <- "***"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-005"&test1.pseudo.wd.mean$leaf=="Feuille.C","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-005"&test1.pseudo.wd.mean$leaf=="Feuille.D","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-115"&test1.pseudo.wd.mean$leaf=="Feuille.A","normPval"] <- "*"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-115"&test1.pseudo.wd.mean$leaf=="Feuille.B","normPval"] <- "***"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-115"&test1.pseudo.wd.mean$leaf=="Feuille.C","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-115"&test1.pseudo.wd.mean$leaf=="Feuille.D","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-308"&test1.pseudo.wd.mean$leaf=="Feuille.A","normPval"] <- "#"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-308"&test1.pseudo.wd.mean$leaf=="Feuille.B","normPval"] <- "***"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-308"&test1.pseudo.wd.mean$leaf=="Feuille.C","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-308"&test1.pseudo.wd.mean$leaf=="Feuille.D","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MIX"&test1.pseudo.wd.mean$leaf=="Feuille.A","normPval"] <- "#"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MIX"&test1.pseudo.wd.mean$leaf=="Feuille.B","normPval"] <- "**"
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MIX"&test1.pseudo.wd.mean$leaf=="Feuille.C","normPval"] <- ""
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MIX"&test1.pseudo.wd.mean$leaf=="Feuille.D","normPval"] <- ""
+
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MC16-285","normPvalPos"] <- max(log2(test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MC16-285","pseudo_count_normPlus"]))
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-005","normPvalPos"] <- max(log2(test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-005","pseudo_count_normPlus"]))
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-115","normPvalPos"] <- max(log2(test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-115","pseudo_count_normPlus"]))
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-308","normPvalPos"] <- max(log2(test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MP17-308","pseudo_count_normPlus"]))
+test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MIX","normPvalPos"] <- max(log2(test1.pseudo.wd.mean[test1.pseudo.wd.mean$antagonist=="MIX","pseudo_count_normPlus"]))
+```
+
+### Figure 6.A
+```{r}
+leaf.gg4 <- test1.pseudo.wd %>%
+ggplot(aes(x=Leafx, y=log10(pseudo_count))) + geom_violin() + geom_jitter(alpha=0.25) +
+facet_grid(antagonist2~.) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "crossbar", width = 0.5, col="grey30", linetype = 1) +
+theme_bw() +    ylim(0,max(log10(test1.pseudo.wd$pseudo_count))+0.1) + geom_text(mapping =aes(y=max(log10(test1.pseudo.wd$pseudo_count))+0.05, label=tukeyHSD_glmer)) + ylab(y_title3)  + xlab( "Leaf from the top at inoculation (young to old)") + ggtitle("A.")
+```
+
+### Figure 6.B
+```{r}
+y_title6 <- expression(paste("Normalized ",italic("P. syringae"), " symptoms count log10(relative to mean(Water))"))
+leaf.gg6c <- test1.pseudo.wd.mean[which(!test1.pseudo.wd.mean$antagonist2=="Water"),] %>%
+ggplot(aes(x=Leafx, y=log2(pseudo_count_normPlus))) + geom_violin() + geom_jitter(alpha=0.25) +
+facet_grid(antagonist2~., scales ="free") +
+stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "crossbar", width = 0.5, col="grey30", linetype = 1) +
+theme_bw()+ ylab(y_title6) + geom_hline(yintercept = 0, color="black") + xlab( "Leaf from the top at inoculation (young to old)") + ggtitle("B.") +
+geom_text(mapping =aes(y=normPvalPos+0.1, label=normPval))
+```
+
+## Plotting final figure 6
+```{r}
+multiplot(leaf.gg4, leaf.gg6c, cols = 2)
+```
+
+
+# Supplemental Figure 5
+```{r}
+y_titleS5A <- expression(paste("Day count after ",italic("Xanthomonas hortorum"), " inoculation"))
+
+gg5SA <- ggplot(df3, aes(x=xdate, y=X.h.laitue.Per))+ 
+  #geom_line(data=df2, colour="grey90") +
+  geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
+  #geom_point(data=df3)
+  #scale_color_manual(values = cbbPalette)  + 
+  facet_grid(id~.) + theme_bw() + ylim(0,0.75) + ggtitle("A") + 
+  #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
+  xlab(y_titleS5A) + ylab("Antagonist inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
+
+y_titleS5B <- expression(paste("Day count after ",italic("P. syringae pv. phaseolicola "), " inoculation"))
+
+gg5SB <- ggplot(df3, aes(x=xdate, y=X.c.chou.Per))+ 
+  #geom_line(data=df2, colour="grey90") +
+  geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
+  #geom_point(data=df3)
+  #scale_color_manual(values = cbbPalette)  + 
+  facet_grid(id~.) + theme_bw() + ylim(0,0.75) + ggtitle("B") + 
+  #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
+  xlab(y_titleS5B) + ylab("Antagonist inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
+
+
+y_titleS5C <- expression(paste("Day count after ",italic("Xanthomonas campestris "), " inoculation"))
+
+gg5SC <- ggplot(df3, aes(x=xdate, y=P.s.haricot.Per))+ 
+  #geom_line(data=df2, colour="grey90") +
+  geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
+  #geom_point(data=df3)
+  #scale_color_manual(values = cbbPalette)  + 
+  facet_grid(id~.) + theme_bw() + ylim(0,0.75) + ggtitle("C") + 
+  #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
+  xlab(y_titleS5C) + ylab("Antagonist inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
+gg5SC
+
+multiplot(gg5SA, gg5SC, gg5SB, cols = 2)
+```
+
+# Supplemental Figure 6
+```{r}
+test1.dry <- test1.pseudo[,c("antagonist", "plant_dry_weight")]
+test1.dry$antagonist2 <- as.character(test1.dry$antagonist)
+test1.dry[which(test1.dry$antagonist2=="EAU"), "antagonist2"] <- "Water"
+test1.dry$antagonist2 <- as.factor(test1.dry$antagonist2)
+
+ggplot(data = test1.dry, aes(x=antagonist2, y=plant_dry_weight)) + geom_jitter() + geom_violin(alpha=0.3) +  stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean, geom = "crossbar", width = 0.5, col="black", linetype = 1) + xlab("Antagonist") + ylab("Plant dry weight (g)") + ylim (0, max(test1$plant_dry_weight)) 
 ```
