@@ -508,6 +508,15 @@ ggplot(df3, aes(x=xdate, y=P.s.courge.Per))+
 
 ## Figure 5
 ```{r}
+test1 <- read.table(file = "./test1.csv", sep = ",", header = T)
+test1.pseudo <- test1[which(test1[,"treatment"]=="B17-149"),]
+test1.pseudo$rep <- factor(test1.pseudo$rep)
+test1.pseudo$antagonist <- factor(test1.pseudo$antagonist)
+test1.pseudo$antagonist <- factor(test1.pseudo$antagonist, levels = c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"))
+test1.pseudo[test1.pseudo$antagonist=="EAU", "test"] <- c("neg")
+test1.pseudo[test1.pseudo$antagonist=="MIX", "test"] <- c("mix")
+test1.pseudo[!test1.pseudo$antagonist%in%c("EAU", "MIX"), "test"] <- c("antagonist")
+
 y_title <- expression(paste(italic("P.syringae"), " symptoms count"))
 
 ggplot(data = test1.pseudo, aes(x=antagonist, y=pseudo_spot, fill=antagonist)) + geom_jitter(aes(color=antagonist), ) + geom_violin(alpha=0.3) +  stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean, geom = "crossbar", width = 0.5, col="red", linetype = 1, show.legend = FALSE) + theme_bw() + ylab(y_title) + 
@@ -518,17 +527,6 @@ ggplot(data = test1.pseudo, aes(x=antagonist, y=pseudo_spot, fill=antagonist)) +
 # Figure 6
 ## Data input and processing
 ```{r}
-test1 <- read.table(file = "./test1.csv", sep = ",", header = T)
-test1.pseudo <- test1[which(test1[,"treatment"]=="B17-149"),]
-test1.pseudo$rep <- factor(test1.pseudo$rep)
-test1.pseudo$antagonist <- factor(test1.pseudo$antagonist)
-
-test1.pseudo$antagonist <- factor(test1.pseudo$antagonist, levels = c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"))
-
-test1.pseudo[test1.pseudo$antagonist=="EAU", "test"] <- c("neg")
-test1.pseudo[test1.pseudo$antagonist=="MIX", "test"] <- c("mix")
-test1.pseudo[!test1.pseudo$antagonist%in%c("EAU", "MIX"), "test"] <- c("antagonist")
-
 test1.pseudo.wd <- test1.pseudo %>% pivot_longer(cols = c("Feuille.A","Feuille.B","Feuille.C","Feuille.D"), names_to = "leaf", values_to = "pseudo_count" )
 
 test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.A", "Leaf"] <- "A"
