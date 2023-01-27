@@ -495,29 +495,26 @@ df3[which(df3$id=="MP17-308"),"aovPval"] <- "p<0.0001"
 
 ## plot data and linear regression
 ```{r}
-ggplot(df3, aes(x=xdate, y=P.s.courge.Per))+ 
+figure4.gg<-ggplot(df3, aes(x=xdate, y=P.s.courge.Per*100))+ 
   #geom_line(data=df2, colour="grey90") +
   geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
   #geom_point(data=df3)
   #scale_color_manual(values = cbbPalette)  + 
-  facet_grid(id~.) + theme_bw() + ylim(0,0.75) +
+  facet_grid(id~.) + theme_bw() + ylim(0,75) +
   #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
-  xlab("Day count after P.syringae inoculation") + ylab("% antagonist inhibition") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate) + geom_text(mapping =aes(x=6.5, y=0.65, label=aovPval))
+  xlab(expression(paste("Day count after ",italic("P. syringae"), " inoculation"))) + ylab("Pathogen inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate) + geom_text(mapping =aes(x=6.5, y=0.65, label=aovPval))
+
+svg(filename = "figure_4.svg")
+figure4.gg
+dev.off()
+
+figure4.gg
 ```
 
 
 ## Figure 5
 ```{r}
-test1 <- read.table(file = "./test1.csv", sep = ",", header = T)
-test1.pseudo <- test1[which(test1[,"treatment"]=="B17-149"),]
-test1.pseudo$rep <- factor(test1.pseudo$rep)
-test1.pseudo$antagonist <- factor(test1.pseudo$antagonist)
-test1.pseudo$antagonist <- factor(test1.pseudo$antagonist, levels = c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"))
-test1.pseudo[test1.pseudo$antagonist=="EAU", "test"] <- c("neg")
-test1.pseudo[test1.pseudo$antagonist=="MIX", "test"] <- c("mix")
-test1.pseudo[!test1.pseudo$antagonist%in%c("EAU", "MIX"), "test"] <- c("antagonist")
-
-y_title <- expression(paste(italic("P.syringae"), " symptoms count"))
+y_title <- expression(paste(italic("P. syringae"), " symptoms count"))
 
 ggplot(data = test1.pseudo, aes(x=antagonist, y=pseudo_spot, fill=antagonist)) + geom_jitter(aes(color=antagonist), ) + geom_violin(alpha=0.3) +  stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean, geom = "crossbar", width = 0.5, col="red", linetype = 1, show.legend = FALSE) + theme_bw() + ylab(y_title) + 
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) + scale_fill_discrete(name="Antagonist", breaks=c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"), labels=c("Water", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "Mix")) + scale_color_discrete(name="Antagonist", breaks=c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"), labels=c("Water", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "Mix")) 
@@ -527,6 +524,17 @@ ggplot(data = test1.pseudo, aes(x=antagonist, y=pseudo_spot, fill=antagonist)) +
 # Figure 6
 ## Data input and processing
 ```{r}
+test1 <- read.table(file = "./test1.csv", sep = ",", header = T)
+test1.pseudo <- test1[which(test1[,"treatment"]=="B17-149"),]
+test1.pseudo$rep <- factor(test1.pseudo$rep)
+test1.pseudo$antagonist <- factor(test1.pseudo$antagonist)
+
+test1.pseudo$antagonist <- factor(test1.pseudo$antagonist, levels = c("EAU", "MC16-285", "MP17-005", "MP17-115", "MP17-308", "MIX"))
+
+test1.pseudo[test1.pseudo$antagonist=="EAU", "test"] <- c("neg")
+test1.pseudo[test1.pseudo$antagonist=="MIX", "test"] <- c("mix")
+test1.pseudo[!test1.pseudo$antagonist%in%c("EAU", "MIX"), "test"] <- c("antagonist")
+
 test1.pseudo.wd <- test1.pseudo %>% pivot_longer(cols = c("Feuille.A","Feuille.B","Feuille.C","Feuille.D"), names_to = "leaf", values_to = "pseudo_count" )
 
 test1.pseudo.wd[test1.pseudo.wd$leaf=="Feuille.A", "Leaf"] <- "A"
@@ -667,40 +675,44 @@ multiplot(leaf.gg4, leaf.gg6c, cols = 2)
 
 # Supplemental Figure 5
 ```{r}
-y_titleS5A <- expression(paste("Day count after ",italic("Xanthomonas hortorum"), " inoculation"))
+y_titleS5A <- expression(paste("Day count after pathogen inoculation"))
 
-gg5SA <- ggplot(df3, aes(x=xdate, y=X.h.laitue.Per))+ 
+gg5SA <- ggplot(df3, aes(x=xdate, y=X.h.laitue.Per*100))+ 
   #geom_line(data=df2, colour="grey90") +
   geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
   #geom_point(data=df3)
   #scale_color_manual(values = cbbPalette)  + 
-  facet_grid(id~.) + theme_bw() + ylim(0,0.75) + ggtitle("A") + 
+  facet_grid(id~.) + theme_bw() + ylim(0,75) + ggtitle("A") + 
   #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
-  xlab(y_titleS5A) + ylab("Antagonist inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
+  xlab(y_titleS5A) + ylab("Pathogen inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
 
-y_titleS5B <- expression(paste("Day count after ",italic("P. syringae pv. phaseolicola "), " inoculation"))
+y_titleS5B <- expression(paste("Day count after pathogen inoculation"))
 
-gg5SB <- ggplot(df3, aes(x=xdate, y=X.c.chou.Per))+ 
+gg5SB <- ggplot(df3, aes(x=xdate, y=X.c.chou.Per*100))+ 
   #geom_line(data=df2, colour="grey90") +
   geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
   #geom_point(data=df3)
   #scale_color_manual(values = cbbPalette)  + 
-  facet_grid(id~.) + theme_bw() + ylim(0,0.75) + ggtitle("B") + 
+  facet_grid(id~.) + theme_bw() + ylim(0,75) + ggtitle("B") + 
   #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
-  xlab(y_titleS5B) + ylab("Antagonist inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
+  xlab(y_titleS5B) + ylab("Pathogen inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
 
 
-y_titleS5C <- expression(paste("Day count after ",italic("Xanthomonas campestris "), " inoculation"))
+y_titleS5C <- expression(paste("Day count after pathogen inoculation"))
 
-gg5SC <- ggplot(df3, aes(x=xdate, y=P.s.haricot.Per))+ 
+gg5SC <- ggplot(df3, aes(x=xdate, y=P.s.haricot.Per*100))+ 
   #geom_line(data=df2, colour="grey90") +
   geom_point(data=df3) +   geom_smooth(method="lm", se=T) +
   #geom_point(data=df3)
   #scale_color_manual(values = cbbPalette)  + 
-  facet_grid(id~.) + theme_bw() + ylim(0,0.75) + ggtitle("C") + 
+  facet_grid(id~.) + theme_bw() + ylim(0,75) + ggtitle("C") + 
   #scale_x_discrete(labels=c("1d", "2d", "3d", "4d", "7d")) +
-  xlab(y_titleS5C) + ylab("Antagonist inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
-gg5SC
+  xlab(y_titleS5C) + ylab("Pathogen inhibition (%)") + scale_x_continuous(labels = as.character(df3$xdate), breaks = df3$xdate)
+
+
+svg(filename = "supplemental_figure_5.svg", height = 7.5)
+multiplot(gg5SA, gg5SC, gg5SB, cols = 2)
+dev.off()
 
 multiplot(gg5SA, gg5SC, gg5SB, cols = 2)
 ```
@@ -714,3 +726,52 @@ test1.dry$antagonist2 <- as.factor(test1.dry$antagonist2)
 
 ggplot(data = test1.dry, aes(x=antagonist2, y=plant_dry_weight)) + geom_jitter() + geom_violin(alpha=0.3) +  stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean, geom = "crossbar", width = 0.5, col="black", linetype = 1) + xlab("Antagonist") + ylab("Plant dry weight (g)") + ylim (0, max(test1$plant_dry_weight)) 
 ```
+
+# Supplemental Figure 7
+
+```{r}
+chamTrt <- read.table(file="champion_treatment.tsv.txt", sep = "\t", header=T)
+chamTrt.df <- chamTrt %>% group_by(year) %>%count(treatment)
+
+chamTrt.ddf <- chamTrt.df %>% group_by(year) %>% mutate(count_rel = n / sum(n) * 100)
+
+chamTrt.ddf$year <- as.factor(chamTrt.ddf$year)
+colvec <- c("#FFA500", "#800000", "#0000FF", "#006400")
+  
+chamTrt.df.gg <- ggplot(chamTrt.ddf, aes(x=year, y=count_rel, fill=treatment)) + geom_bar(stat = "identity") + ggtitle("A")+
+ scale_fill_manual(values=colvec) + ylab("Relative strain isolation frequency") + xlab("Sampling year") + theme_light() + labs(fill="Treatment")
+chamTrt.df.gg
+
+
+chamTrt[chamTrt$treatment=="RCC", "trt.mod"] <- "Cover crop"
+chamTrt[chamTrt$treatment=="CT-RCC", "trt.mod"] <- "Cover crop"
+chamTrt[chamTrt$treatment=="PC", "trt.mod"] <- "Non Cover crop"
+chamTrt[chamTrt$treatment=="BS", "trt.mod"] <- "Non Cover crop"
+chamTrt$year <- as.factor(chamTrt$year)
+
+chamTrt.df2 <- chamTrt %>% group_by(year) %>%count(trt.mod)
+chamTrt.ddf2 <- chamTrt.df2 %>% group_by(year) %>% mutate(count_rel = n / sum(n) * 100)
+
+chamTrt.ddf2.gg <- ggplot(chamTrt.ddf2, aes(x=year, y=count_rel, fill=trt.mod)) + geom_bar(stat = "identity") + ggtitle("B")+
+ scale_fill_manual(values=MyPalette[2:1]) + ylab("Relative strain isolation frequency") + xlab("Sampling year") + theme_light() + labs(fill="Treament category")
+chamTrt.ddf2.gg
+
+svg(filename = "supplmental_figure_7.svg", height = 5, width = 7)
+multiplot(chamTrt.df.gg, chamTrt.ddf2.gg, cols = 2)
+dev.off()
+multiplot(chamTrt.df.gg, chamTrt.ddf2.gg, cols = 2)
+```
+
+
+```{r}
+chisq.test(chamTrt.ddf2[which(chamTrt.ddf2$year==2016),"n"])
+```
+
+
+```{r}
+chisq.test(chamTrt.ddf[which(as.data.frame(chamTrt.ddf[which(chamTrt.ddf$year==2016),"treatment"])$treatment%in%c("CT-RCC", "RCC")),"n"])
+```
+```{r}
+chisq.test(chamTrt.ddf[which(chamTrt.ddf$year==2017),"n"])
+```
+
